@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.mvisual</groupId>
+  <artifactId>mvisual</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+  <name>Mvisual</name>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <lwjgl.version>3.3.4</lwjgl.version>
+    <javacv.version>1.5.10</javacv.version>
+    <ffmpeg.version>6.1.1-1.5.10</ffmpeg.version>
+    <lwjgl.natives>natives-windows</lwjgl.natives>
+    <javacpp.platform>windows-x86_64</javacpp.platform>
+
+    <app.mainClass>com.switchplayer.SwitchPlayerApp</app.mainClass>
+    <app.name>Mvisual</app.name>
+  </properties>
+
+  <dependencies>
+    <!-- ONNX Runtime Java: neural super-resolution; DirectML/CUDA depend on the native runtime distribution. -->
+    <dependency>
+      <groupId>com.microsoft.onnxruntime</groupId><artifactId>onnxruntime</artifactId><version>1.22.0</version>
+    </dependency>
+    <!-- ===== LWJGL 3: core + GLFW + OpenGL ===== -->
+    <dependency>
+      <groupId>org.lwjgl</groupId><artifactId>lwjgl</artifactId><version>${lwjgl.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId><artifactId>lwjgl</artifactId><version>${lwjgl.version}</version>
+      <classifier>${lwjgl.natives}</classifier><scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId><artifactId>lwjgl-glfw</artifactId><version>${lwjgl.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId><artifactId>lwjgl-glfw</artifactId><version>${lwjgl.version}</version>
+      <classifier>${lwjgl.natives}</classifier><scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId><artifactId>lwjgl-opengl</artifactId><version>${lwjgl.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.lwjgl</groupId><artifactId>lwjgl-opengl</artifactId><version>${lwjgl.version}</version>
+      <classifier>${lwjgl.natives}</classifier><scope>runtime</scope>
+    </dependency>
+
+    <!-- ===== JavaCV + FFmpeg (apenas Windows x64) ===== -->
+    <!-- javacv puxa opencv, tesseract, realsense etc. como dependencias transitivas.
+         O player so usa FFmpeg, entao excluimos tudo isso (menos peso no .exe). -->
+    <dependency>
+      <groupId>org.bytedeco</groupId><artifactId>javacv</artifactId><version>${javacv.version}</version>
+      <exclusions>
+        <exclusion><groupId>org.bytedeco</groupId><artifactId>opencv</artifactId></exclusion>
+        <exclusion><groupId>org.bytedeco</groupId><artifactId>openblas</artifactId></exclusion>
+        <exclusion><groupId>org.bytedeco</groupId><artifactId>leptonica</artifactId></exclusion>
+        <exclusion><groupId>org.bytedeco</groupId><artifactId>tesseract</artifactId></exclusion>
+        <exclusion><groupId>org.bytedeco</groupId><artifactId>flycapture</artifactId></exclusion>
+        <exclusion><groupId>org.bytedeco</groupId><artifactId>libdc1394</artifactId></exclusion>
+        <exclusion><groupId>org.bytedeco</groupId><artifactId>libfreenect</artifactId></exclusion>
+        <exclusion><groupId>org.bytedeco</groupId><artifactId>libfreenect2</artifactId></exclusion>
+        <exclusion><groupId>org.bytedeco</groupId><artifactId>librealsense</artifactId></exclusion>
+        <exclusion><groupId>org.bytedeco</groupId><artifactId>librealsense2</artifactId></exclusion>
+        <exclusion><groupId>org.bytedeco</groupId><artifactId>videoinput</artifactId></exclusion>
+        <exclusion><groupId>org.bytedeco</groupId><artifactId>artoolkitplus</artifactId></exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.bytedeco</groupId><artifactId>javacpp</artifactId><version>${javacv.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.bytedeco</groupId><artifactId>javacpp</artifactId><version>${javacv.version}</version>
+      <classifier>${javacpp.platform}</classifier><scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.bytedeco</groupId><artifactId>ffmpeg</artifactId><version>${ffmpeg.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.bytedeco</groupId><artifactId>ffmpeg</artifactId><version>${ffmpeg.version}</version>
+      <classifier>${javacpp.platform}</classifier>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>false</filtering>
+      </resource>
+    </resources>
+    <finalName>${project.artifactId}-${project.version}</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+      </plugin>
+
+      <!-- 1) JAR da aplicação vai para target/input -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.4.1</version>
+        <configuration>
+          <outputDirectory>${project.build.directory}/input</outputDirectory>
+          <archive>
+            <manifest>
+              <mainClass>${app.mainClass}</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+
+      <!-- 2) Dependências de runtime vão para target/input -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.6.1</version>
+        <executions>
+          <execution>
+            <id>copy-deps</id>
+            <phase>prepare-package</phase>
+            <goals><goal>copy-dependencies</goal></goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/input</outputDirectory>
+              <includeScope>runtime</includeScope>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!-- Ativado automaticamente no Windows: executa jpackage gerando Mvisual.exe -->
+    <profile>
+      <id>windows-exe</id>
+      <activation>
+        <os><family>windows</family></os>
+      </activation>
+      <build>
+        <plugins>
+          <!-- jpackage aborta se target/dist ja existir: apaga so essa pasta antes -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-clean-plugin</artifactId>
+            <version>3.3.2</version>
+            <executions>
+              <execution>
+                <id>clean-dist</id>
+                <phase>prepare-package</phase>
+                <goals><goal>clean</goal></goals>
+                <configuration>
+                  <excludeDefaultDirectories>true</excludeDefaultDirectories>
+                  <filesets>
+                    <fileset><directory>${project.build.directory}/dist</directory></fileset>
+                  </filesets>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.3.0</version>
+            <executions>
+              <execution>
+                <id>jpackage-app-image</id>
+                <phase>package</phase>
+                <goals><goal>exec</goal></goals>
+                <configuration>
+                  <executable>${java.home}/bin/jpackage</executable>
+                  <arguments>
+                    <argument>--type</argument><argument>app-image</argument>
+                    <argument>--name</argument><argument>${app.name}</argument>
+                    <argument>--icon</argument><argument>${project.basedir}/src/main/resources/icon.ico</argument>
+                    <argument>--app-version</argument><argument>${project.version}</argument>
+                    <argument>--input</argument><argument>${project.build.directory}/input</argument>
+                    <argument>--main-jar</argument><argument>${project.build.finalName}.jar</argument>
+                    <argument>--main-class</argument><argument>${app.mainClass}</argument>
+                    <argument>--dest</argument><argument>${project.build.directory}/dist</argument>
+                    <!-- Runtime customizado via jlink -->
+                    <argument>--add-modules</argument>
+                    <argument>java.base,java.logging,java.desktop,java.management,jdk.unsupported</argument>
+                    <argument>--jlink-options</argument>
+                    <argument>--strip-debug --no-header-files --no-man-pages</argument>
+                    <!-- Flags de baixa latência e Garbage Collector ZGC -->
+                    <argument>--java-options</argument><argument>-XX:+UseZGC</argument>
+                    <argument>--java-options</argument><argument>-Xms256m</argument>
+                    <argument>--java-options</argument><argument>-Xmx1g</argument>
+                    <argument>--java-options</argument><argument>-Dorg.lwjgl.util.NoChecks=true</argument>
+                    <!-- Sem console: grava o log em %LOCALAPPDATA%\Mvisual\mvisual.log -->
+                    <argument>--java-options</argument><argument>-Dmvisual.log=file</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>  
